@@ -1,118 +1,221 @@
+import decorator
+import ast
+
+method_nodes = {
+"__add__": ast.Add,
+    #And
+    #Assert
+    #Assign
+    "__getattribute__": ast.Attribute,
+    #AugAssign
+    #AugLoad
+    #AugStore
+    #BinOp
+    "__and__": ast.BitAnd,
+    "__or__": ast.BitOr,
+    "__xor__": ast.BitXor,
+    #BoolOp
+    #Break
+    "__call__": ast.Call,
+    #ClassDef
+    "__cmp__": ast.Compare,
+    #Continue
+    #Del
+    #Delete
+    #Dict
+    #DictComp
+    "__div__": ast.Div,
+    #Ellipsis
+    "__eq__": ast.Eq,
+    #ExceptHandler
+    #Exec
+    #Expr
+    #Expression
+    #ExtSlice
+    "__floordiv__": ast.FloorDiv,
+    #For
+    #FunctionDef
+    #GeneratorExp
+    #Global
+    "__gt__": ast.Gt,
+    "__ge__": ast.GtE,
+    #If
+    #IfExp
+    #Import
+    #ImportFrom
+    "__contains__": ast.In,
+    "__index__": ast.Index,
+    #Interactive
+    "__inv__": ast.Invert,
+    #Is
+    #IsNot
+    "__lshift__": ast.LShift,
+    #Lambda
+    #List
+    #ListComp
+    #Load
+    "__lt__": ast.Lt,
+    "__le__": ast.LtE,
+    "__mod__": ast.Mod,
+    #Module
+    "__mul__": ast.Mult,
+    #Name
+    #NodeTransformer
+    #NodeVisitor
+    #Not
+    "__ne__": ast.NotEq,
+    #NotIn
+    #Num
+    #Or
+    #Param
+    #Pass
+    "__pow__": ast.Pow,
+    #Print
+    #PyCF_ONLY_AST
+    "__rshift__": ast.RShift,
+    #Raise
+    "__repr__": ast.Repr,
+    #Return
+    #Set
+    #SetComp
+    #Slice
+    #Store
+    "__str__": ast.Str,
+    "__sub__": ast.Sub,
+    #Subscript
+    #Suite
+    #TryExcept
+    #TryFinally
+    #Tuple
+    "__pos__": ast.UAdd,
+    "__neg__": ast.USub,
+    #UnaryOp
+    #While
+    #With
+    #Yield
+}
+
+@decorator
+def builds_ast(f, *args, **kwargs):
+    self = f.im_self
+    name = f.__name__
+    object.__setattr__(f.im_self, f.im_func.__name__)
+    
+
+
+class SymbolicMeta(type):
+    """
+    """
+
 class Symbol(object):
     """
     Base class for Proxy objects.
     """
 
     def __init__(self, iterable=tuple(), parent=None):
-        self.iterable = iterable
-        self.parent = parent
-
-
-    def __getattr__(self, item):
-        iterable = IteratorProxy(_iterable(self), _cacheable(self))
-        return type(self)((e.__getattribute__(item) for e in iterable), self)
-
+        pass
+    
     def __iter__(self):
-        return iter(_iterable(self))
+        pass
 
     def __nonzero__(self):
-        return bool(_iterable(self))
+        pass
 
     def __str__(self):
-        return ", ".join(str(e) for e in _iterable(self))
-
+        pass
+    
     def __repr__(self):
-        return "%s([%s])" % (type(self).__name__ , ", ".join(repr(e) for e in _iterable(self)))
-
+        pass
+    
     def __unicode__(self):
-        return u", ".join(unicode(e) for e in _iterable(self))
+        pass
 
     def __reversed__(self):
-        return lambda: reversed(_iterable(self))
+        pass
 
     def __getattribute__(self, item):
         pass
 
     def __hash__(self):
-        return lambda: (hash(e) for e in _iterable(self))
+        pass
 
     def __invert__(self):
-        return lambda: (~e for e in _iterable(self))
+        pass
 
     def __index__(self):
-        return lambda: (operator.index(e) for e in _iterable(self))
+        pass
 
     def __neg__(self):
-        return lambda: (-e for e in _iterable(self))
+        pass
 
     def __pos__(self):
-        return lambda: (+e for e in _iterable(self))
+        pass
 
     def __abs__(self):
-        return lambda: (e.__abs__() for e in _iterable(self))
+        pass
 
     def __call__(self, *args, **kwargs):
-        return lambda: self.f(*args, **kwargs)
+        pass
 
     def __getattr__(self, attr):
-        return lambda: getattr(self.f, attr)
+        pass
 
     def __reversed__(self):
-        return lambda: reversed(self.f)
+        pass
 
     def __getitem__(self, item):
-        return lambda: self.f[item]
+        pass
 
     def __hash__(self):
-        return lambda: hash(self.f)
+        pass
 
     def __invert__(self):
-        return lambda:~self.f
+        pass
 
     def __index__(self):
-        return lambda: operator.index(self.f)
+        pass
 
     def __neg__(self):
-        return lambda:-self.f
+        pass
 
     def __pos__(self):
-        return lambda:+self.f
+        pass
 
     def __abs__(self):
-        return lambda: abs(self.f)
+        pass
 
     def __add__(self, other):
-        return lambda: self.f + other
+        pass
 
     def __sub__(self, other):
-        return lambda: self.f - other
+        pass
 
     def __mul__(self, other):
-        return lambda: self.f * other
+        pass
 
     def __floordiv__(self, other):
-        return lambda: self.f // other
+        pass
 
     def __mod__(self, other):
-        return lambda: self.f % other
+        pass
 
     def __divmod__(self, other):
-        return lambda: divmod(self.f, other)
+        pass
 
     def __pow__(self, other, modulo=None):
-        return lambda: pow(self.f, other, modulo)
+        pass
 
     def __lshift__(self, other):
-        return lambda: self.f << other
+        pass
 
     def __rshift__(self, other):
-        return lambda: self.f >> other
+        pass
 
     def __div__(self, other):
-        return lambda: self.f / other
+        pass
 
     def __truediv__(self, other):
-        return lambda: self.f.__truediv__(other)
+        pass
 
     def __radd__(self, other):
         return lambda: other + self.f
