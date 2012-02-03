@@ -1,5 +1,12 @@
-import decorator
+from decorator import decorator
 import ast
+
+test_string = """
+x = 4
+x += 1
+x2 = [x]
+x2[0].bit_length()
+"""
 
 method_nodes = {
 "__add__": ast.Add,
