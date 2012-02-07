@@ -1,11 +1,13 @@
 from decorator import decorator
 import ast
+import types
 from inspect import getcallargs
 from dispatch import DispatchDict
 
 def compile_sym(symbol):
     expr = ast.Expression(object.__getattribute__(symbol, "ast"))
-    return compile(ast.fix_missing_locations(expr), '', 'eval')
+    fixed = ast.fix_missing_locations(expr)
+    return compile(fixed, '<string>', 'eval')
 
 def ast_self_node(symbol):
     return object.__getattribute__(symbol, "ast")
@@ -31,9 +33,24 @@ def aug_assign(op):
         ast_obj_nodes(other),
     )
 
+def subscript(self, item):
+    if isinstance(item, types.SliceType):
+        index = ast.Slice(
+            item.start and ast_obj_nodes(item.start),
+            item.stop and ast_obj_nodes(item.stop),
+            item.step and ast_obj_nodes(item.step)
+        )
+    else:
+        index = ast.Index(ast_obj_nodes(item))
+    return ast.Subscript(
+        value=object.__getattribute__(self, "ast"),
+        slice=index,
+        ctx=ast.Load()
+    )
+
 
 def unary_op(op):
-    return lambda self: ast.UnaryOp(op, ast_self_node(self))
+    return lambda self: ast.UnaryOp(op(), ast_self_node(self))
 
 def ast_name(name, ctx=ast.Load):
     return ast.Name(id=name, ctx=ctx())
@@ -41,8 +58,12 @@ def ast_name(name, ctx=ast.Load):
 ast_obj_nodes = DispatchDict({
     int: lambda x: ast.Num(x),
     float: lambda x: ast.Num(x),
-    str: lambda x: ast.Str(x),
+    str: lambda x: ast.Str(x)
 })
+
+ast_obj_nodes[types.SliceType] = lambda x: ast.Index(
+
+)
 
 ast_op_nodes = {
     "__add__": binary_op(ast.Add),
@@ -143,13 +164,14 @@ ast_op_nodes = {
     "__str__": ast.Str,
     "__sub__": binary_op(ast.Sub),
     "__isub__": aug_assign(ast.Sub),
-    #Subscript
+    "__getitem__": subscript,
     #Suite
     #TryExcept
     #TryFinally
     #Tuple
     "__pos__": unary_op(ast.UAdd),
     "__neg__": unary_op(ast.USub),
+    "__invert__": unary_op(ast.Invert)
     #UnaryOp
     #While
     #With
@@ -214,8 +236,9 @@ class Symbol(object):
     def __hash__(self):
         pass
 
+    @chainable
     def __invert__(self):
-        pass
+        return lambda:-object.__getattribute__(self, "state")
 
     def __index__(self):
         pass

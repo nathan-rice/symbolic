@@ -3,24 +3,56 @@ import ast
 from symbolic import Symbol, compile_sym
 
 def test_add():
-	x = Symbol() + 1
-	expr = "x + 1"
-	p_expr = ast.parse(expr)
+	x = 4
+	symbol = 4
+	sym = Symbol() + 2
+	expr = "x + 2"
+	p_expr = ast.parse(expr, mode='eval')
+	c_expr = compile(ast.fix_missing_locations(p_expr), '', 'eval')
+	c_sym = compile_sym(sym)
+	x = eval(c_expr)
+	symbol = eval(c_sym)
+	assert symbol == 4 + 2
+	assert x == symbol
 
 def test_sub():
-	x = Symbol() - 1
-	expr = "x - 1"
-	p_expr = ast.parse(expr)
+	x = 4
+	symbol = 4
+	sym = Symbol() - 2
+	expr = "x - 2"
+	p_expr = ast.parse(expr, mode='eval')
+	c_expr = compile(ast.fix_missing_locations(p_expr), '', 'eval')
+	c_sym = compile_sym(sym)
+	x = eval(c_expr)
+	symbol = eval(c_sym)
+	assert symbol == 4 - 2
+	assert x == symbol
 
 def test_mul():
-	x = Symbol() * 1
-	expr = "x * 1"
-	p_expr = ast.parse(expr)
+	x = 4
+	symbol = 4
+	sym = Symbol() * 2
+	expr = "x * 2"
+	p_expr = ast.parse(expr, mode='eval')
+	c_expr = compile(ast.fix_missing_locations(p_expr), '', 'eval')
+	c_sym = compile_sym(sym)
+	x = eval(c_expr)
+	symbol = eval(c_sym)
+	assert symbol == 4 * 2
+	assert x == symbol
 
 def test_div():
-	x = Symbol() / 1
-	expr = "x / 1"
-	p_expr = ast.parse(expr)
+	x = 4
+	symbol = 4
+	sym = Symbol() / 2
+	expr = "x / 2"
+	p_expr = ast.parse(expr, mode='eval')
+	c_expr = compile(ast.fix_missing_locations(p_expr), '', 'eval')
+	c_sym = compile_sym(sym)
+	x = eval(c_expr)
+	symbol = eval(c_sym)
+	assert symbol == 4 / 2
+	assert x == symbol
 
 def test_iter():
 	x = iter(Symbol())
@@ -33,35 +65,85 @@ def test_getattribute():
 	p_expr = ast.parse(expr)
 
 def test_invert():
-	x = ~Symbol()
+	x = 1
+	symbol = 1
+	sym = ~Symbol()
 	expr = "~x"
-	p_expr = ast.parse(expr)
+	p_expr = ast.parse(expr, mode='eval')
+	c_expr = compile(ast.fix_missing_locations(p_expr), '', 'eval')
+	c_sym = compile_sym(sym)
+	x = eval(c_expr)
+	symbol = eval(c_sym)
+	assert symbol == -2
+	assert x == symbol
 
 def test_index():
 	pass
 
 def test_neg():
-	x = -Symbol()
+	x = 1
+	symbol = 1
+	sym = -Symbol()
 	expr = "-x"
-	p_expr = ast.parse(expr)
+	p_expr = ast.parse(expr, mode='eval')
+	c_expr = compile(ast.fix_missing_locations(p_expr), '', 'eval')
+	c_sym = compile_sym(sym)
+	x = eval(c_expr)
+	symbol = eval(c_sym)
+	assert symbol == -1
+	assert x == symbol
 
 def test_pos():
-	x = +Symbol()
+	x = 1
+	symbol = 1
+	sym = +Symbol()
 	expr = "+x"
-	p_expr = ast.parse(expr)
+	p_expr = ast.parse(expr, mode='eval')
+	c_expr = compile(ast.fix_missing_locations(p_expr), '', 'eval')
+	c_sym = compile_sym(sym)
+	x = eval(c_expr)
+	symbol = eval(c_sym)
+	assert symbol == 1
+	assert x == symbol
 
 def test_call():
-	x = Symbol()()
-	expr = "x()"
-	p_expr = ast.parse(expr)
+	x = 4
+	symbol = 4
+	three = []
+	four = {}
+	sym = Symbol()(1, two=2, *three, **four)
+	expr = "x(1, two=2, *three, **four)"
+	p_expr = ast.parse(expr, mode='eval')
+	c_expr = compile(ast.fix_missing_locations(p_expr), '', 'eval')
+	print ast.dump(p_expr)
+	c_sym = compile_sym(sym)
+	x = eval(c_expr)
+	symbol = eval(c_sym)
+	assert x == symbol
 
 def test_getitem():
-	x1 = Symbol()[0:-1]
-	x2 = Symbol()[x1]
-	expr1 = "x[0:-1]"
-	expr2 = "x[x1]"
-	p_expr1 = ast.parse(expr1)
-	p_expr2 = ast.parse(expr2)
+	x = [1, 2, 3, 4, 5]
+	symbol = [1, 2, 3, 4, 5]
+	sym1 = Symbol()[0]
+	sym2 = Symbol()[1:-1]
+	expr1 = "x[0]"
+	expr2 = "x[1:-1]"
+	p_expr1 = ast.parse(expr1, mode='eval')
+	p_expr2 = ast.parse(expr2, mode='eval')
+	c_expr1 = compile(ast.fix_missing_locations(p_expr1), '', 'eval')
+	c_expr2 = compile(ast.fix_missing_locations(p_expr2), '', 'eval')
+	c_sym1 = compile_sym(sym1)
+	c_sym2 = compile_sym(sym2)
+	x = eval(c_expr1)
+	symbol = eval(c_sym1)
+	assert symbol == 1
+	assert x == symbol
+	x = [1, 2, 3, 4, 5]
+	symbol = [1, 2, 3, 4, 5]
+	x = eval(c_expr2)
+	symbol = eval(c_sym2)
+	assert symbol == [2, 3, 4]
+	assert x == symbol
 
 def test_floordiv():
 	x = 3
@@ -339,5 +421,4 @@ def test_irshift():
 	p_expr = ast.parse(expr)
 
 if __name__ == "__main__":
-	nose.runmodule()
-#	test_mod()
+	nose.runmodule(argv=["-d", "-s"])
