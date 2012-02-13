@@ -54,15 +54,13 @@ def test_div():
 	assert symbol == 4 / 2
 	assert x == symbol
 
-def test_iter():
-	x = iter(Symbol())
-	expr = "iter(x)"
-	p_expr = ast.parse(expr)
-
 def test_getattribute():
-	x = Symbol().foo
-	expr = "x.foo"
-	p_expr = ast.parse(expr)
+	sym = Symbol().foo
+	expr = "symbol.foo"
+	p_expr = ast.parse(expr, mode='eval')
+	c_expr = compile(ast.fix_missing_locations(p_expr), '', 'eval')
+	c_sym = compile_sym(sym)
+	assert ast.dump(p_expr.body) == ast.dump(object.__getattribute__(sym, "ast"))
 
 def test_invert():
 	x = 1
@@ -107,15 +105,17 @@ def test_pos():
 	assert x == symbol
 
 def test_call():
-	x = 4
-	symbol = 4
-	three = []
-	four = {}
-	sym = Symbol()(1, two=2, *three, **four)
-	expr = "x(1, two=2, *three, **four)"
+	def x(one, two, three):
+		return one + two + three
+	symbol = x
+	one_ = "one"
+	two_ = "two"
+	three_ = []
+	four_ = {}
+	sym = Symbol()(1, two=2, three=3)
+	expr = "x(1, two=2, three=3)"
 	p_expr = ast.parse(expr, mode='eval')
 	c_expr = compile(ast.fix_missing_locations(p_expr), '', 'eval')
-	print ast.dump(p_expr)
 	c_sym = compile_sym(sym)
 	x = eval(c_expr)
 	symbol = eval(c_sym)
@@ -212,11 +212,6 @@ def test_lshift():
 	symbol = eval(c_sym)
 	assert symbol == 1 << 1
 	assert x == symbol
-
-def test_contains():
-	x = 1 in Symbol()
-	expr = "x in 1"
-	p_expr = ast.parse(expr)
 
 def test_cmp():
 	x = Symbol() >= 1
@@ -343,82 +338,187 @@ def test_or():
 	assert x == symbol
 
 def test_iand():
-	x = Symbol()
-	x &= 1
-	expr = "x &= 1"
-	p_expr = ast.parse(expr)
+	x = 4
+	symbol = 4
+	sym = Symbol()
+	sym &= 2
+	expr = "x &= 2"
+	p_expr = ast.parse(expr, mode='exec')
+	c_expr = compile(ast.fix_missing_locations(p_expr), '', 'exec')
+	c_sym = compile_sym(sym, 'exec')
+	exec c_expr
+	exec c_sym
+	assert symbol == 4 & 2
+	assert x == symbol
 
 def test_ixor():
-	x = Symbol()
-	x ^= 1
-	expr = "x ^= 1"
-	p_expr = ast.parse(expr)
+	x = 4
+	symbol = 4
+	sym = Symbol()
+	sym ^= 2
+	expr = "x ^= 2"
+	p_expr = ast.parse(expr, mode='exec')
+	c_expr = compile(ast.fix_missing_locations(p_expr), '', 'exec')
+	c_sym = compile_sym(sym, 'exec')
+	exec c_expr
+	exec c_sym
+	assert symbol == 4 ^ 2
+	assert x == symbol
 
 def test_ior():
-	x = Symbol()
-	x |= 1
-	expr = "x |= 1"
-	p_expr = ast.parse(expr)
+	x = 4
+	symbol = 4
+	sym = Symbol()
+	sym |= 2
+	expr = "x |= 2"
+	p_expr = ast.parse(expr, mode='exec')
+	c_expr = compile(ast.fix_missing_locations(p_expr), '', 'exec')
+	c_sym = compile_sym(sym, 'exec')
+	exec c_expr
+	exec c_sym
+	assert symbol == 4 | 2
+	assert x == symbol
 
 def test_iadd():
-	x = Symbol()
-	x += 1
-	expr = "x += 1"
-	p_expr = ast.parse(expr)
+	x = 4
+	symbol = 4
+	sym = Symbol()
+	sym += 2
+	expr = "x += 2"
+	p_expr = ast.parse(expr, mode='exec')
+	c_expr = compile(ast.fix_missing_locations(p_expr), '', 'exec')
+	c_sym = compile_sym(sym, 'exec')
+	exec c_expr
+	exec c_sym
+	assert symbol == 6
+	assert x == symbol
+
 
 def test_isub():
-	x = Symbol()
-	x -= 1
-	expr = "x -= 1"
-	p_expr = ast.parse(expr)
+	x = 4
+	symbol = 4
+	sym = Symbol()
+	sym -= 2
+	expr = "x -= 2"
+	p_expr = ast.parse(expr, mode='exec')
+	c_expr = compile(ast.fix_missing_locations(p_expr), '', 'exec')
+	c_sym = compile_sym(sym, 'exec')
+	exec c_expr
+	exec c_sym
+	assert symbol == 2
+	assert x == symbol
 
 def test_imul():
-	x = Symbol()
-	x *= 1
-	expr = "x *= 1"
-	p_expr = ast.parse(expr)
+	x = 4
+	symbol = 4
+	sym = Symbol()
+	sym *= 2
+	expr = "x *= 2"
+	p_expr = ast.parse(expr, mode='exec')
+	c_expr = compile(ast.fix_missing_locations(p_expr), '', 'exec')
+	c_sym = compile_sym(sym, 'exec')
+	exec c_expr
+	exec c_sym
+	assert symbol == 8
+	assert x == symbol
 
 def test_idiv():
-	x = Symbol()
-	x /= 1
-	expr = "x /= 1"
-	p_expr = ast.parse(expr)
+	x = 4
+	symbol = 4
+	sym = Symbol()
+	sym /= 2
+	expr = "x /= 2"
+	p_expr = ast.parse(expr, mode='exec')
+	c_expr = compile(ast.fix_missing_locations(p_expr), '', 'exec')
+	c_sym = compile_sym(sym, 'exec')
+	exec c_expr
+	exec c_sym
+	assert symbol == 2
+	assert x == symbol
 
 def test_itruediv():
-	x = Symbol()
-	x /= 1
-	expr = "x /= 1"
-	p_expr = ast.parse(expr)
+	x = 4
+	symbol = 4
+	sym = Symbol()
+	sym /= 2
+	expr = "x /= 2"
+	p_expr = ast.parse(expr, mode='exec')
+	c_expr = compile(ast.fix_missing_locations(p_expr), '', 'exec')
+	c_sym = compile_sym(sym, 'exec')
+	exec c_expr
+	exec c_sym
+	assert symbol == 2
+	assert x == symbol
 
 def test_ifloordiv():
-	x = Symbol()
-	x //= 1
-	expr = "x //= 1"
-	p_expr = ast.parse(expr)
+	x = 4
+	symbol = 4
+	sym = Symbol()
+	sym //= 3
+	expr = "x //= 3"
+	p_expr = ast.parse(expr, mode='exec')
+	c_expr = compile(ast.fix_missing_locations(p_expr), '', 'exec')
+	c_sym = compile_sym(sym, 'exec')
+	exec c_expr
+	exec c_sym
+	assert symbol == 4 // 3
+	assert x == symbol
 
 def test_imod():
-	x = Symbol()
-	x %= 1
-	expr = "x %= 1"
-	p_expr = ast.parse(expr)
+	x = 4
+	symbol = 4
+	sym = Symbol()
+	sym %= 2
+	expr = "x %= 2"
+	p_expr = ast.parse(expr, mode='exec')
+	c_expr = compile(ast.fix_missing_locations(p_expr), '', 'exec')
+	c_sym = compile_sym(sym, 'exec')
+	exec c_expr
+	exec c_sym
+	assert symbol == 0
+	assert x == symbol
 
 def test_ipow():
-	x = Symbol()
-	x **= 1
-	expr = "x **= 1"
-	p_expr = ast.parse(expr)
+	x = 2
+	symbol = 2
+	sym = Symbol()
+	sym **= 2
+	expr = "x **= 2"
+	p_expr = ast.parse(expr, mode='exec')
+	c_expr = compile(ast.fix_missing_locations(p_expr), '', 'exec')
+	c_sym = compile_sym(sym, 'exec')
+	exec c_expr
+	exec c_sym
+	assert symbol == 4
+	assert x == symbol
 
 def test_ilshift():
-	x = Symbol()
-	x <<= 1
+	x = 1
+	symbol = 1
+	sym = Symbol()
+	sym <<= 1
 	expr = "x <<= 1"
-	p_expr = ast.parse(expr)
+	p_expr = ast.parse(expr, mode='exec')
+	c_expr = compile(ast.fix_missing_locations(p_expr), '', 'exec')
+	c_sym = compile_sym(sym, 'exec')
+	exec c_expr
+	exec c_sym
+	assert symbol == 1 << 1
+	assert x == symbol
 
 def test_irshift():
-	x = Symbol()
-	x >>= 1
+	x = 1
+	symbol = 1
+	sym = Symbol()
+	sym >>= 1
 	expr = "x >>= 1"
-	p_expr = ast.parse(expr)
+	p_expr = ast.parse(expr, mode='exec')
+	c_expr = compile(ast.fix_missing_locations(p_expr), '', 'exec')
+	c_sym = compile_sym(sym, 'exec')
+	exec c_expr
+	exec c_sym
+	assert symbol == 1 >> 1
+	assert x == symbol
 
 if __name__ == "__main__":
 	nose.runmodule(argv=["-d", "-s"])
