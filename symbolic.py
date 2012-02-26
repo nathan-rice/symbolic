@@ -3,15 +3,35 @@ import ast
 import types
 from inspect import getcallargs
 from dispatch import DispatchDict
+from itertools import chain
 
-def compile_sym(symbol, mode='eval'):
-    if mode == "exec":
-        wrapper = ast.Module
+def sym_getattr(sym, attr_name, *default):
+    try:
+        return object.__getattribute__(sym, attr_name)
+    except AttributeError:
+        if len(default) > 0:
+            return default[0]
+        else:
+            raise
+
+def compile_sym(symbol):
+    prior = object.__getattribute__(symbol, "prior")
+    module = [object.__getattribute__(s, "ast") for s in prior]
+    parent = object.__getattribute__(symbol, "parent")
+    results = object.__getattribute__(symbol, "ast")
+    if module:
+        mode = 'exec'
+        if parent:
+            module.append(ast.Expr(results))
+        results = ast.Module(module)
     else:
-        wrapper = ast.Expression
-    tree = wrapper(object.__getattribute__(symbol, "ast"))
-    fixed = ast.fix_missing_locations(tree)
-    return compile(fixed, '<string>', mode)
+        mode = 'eval'
+        results = ast.Expression(results)
+    try:
+        return compile(ast.fix_missing_locations(results), '<string>', mode)
+    except TypeError as err:
+        print ast.dump(object.__getattribute__(symbol, 'ast'))
+        raise
 
 def ast_self_node(symbol):
     return object.__getattribute__(symbol, "ast")
@@ -68,19 +88,34 @@ def ast_call(*args, **kwargs):
         None
     )
 
-def ast_attr(self, item, ctx=ast.Load):
-    return ast.Attribute(
-        ast_self_node(self),
-        item,
-        ctx()
+def ast_attr(ctx):
+    def _ast_attr(self, item):
+        return ast.Attribute(
+            ast_self_node(self),
+            item,
+            ctx()
+        )
+    return _ast_attr
+
+def ast_assign(self, item, value):
+    return ast.Assign(
+        [
+            ast.Attribute(
+                ast_self_node(self),
+                item,
+                ast.Store()
+            )
+        ],
+        ast_obj_nodes(value)
     )
+
 
 ast_op_nodes = {
     "__add__": binary_op(ast.Add),
     "__iadd__": aug_assign(ast.Add),
-    "__getattribute__": ast_attr,
+    "__getattribute__": ast_attr(ast.Load),
     "__and__": binary_op(ast.BitAnd),
-    "__iand__": aug_assign(ast.And),
+    "__iand__": aug_assign(ast.BitAnd),
     "__or__": binary_op(ast.BitOr),
     "__ior__": aug_assign(ast.BitOr),
     "__xor__": binary_op(ast.BitXor),
@@ -110,19 +145,101 @@ ast_op_nodes = {
     "__sub__": binary_op(ast.Sub),
     "__isub__": aug_assign(ast.Sub),
     "__getitem__": subscript,
+    "__setitem__": subscript,
     "__pos__": unary_op(ast.UAdd),
     "__neg__": unary_op(ast.USub),
-    "__invert__": unary_op(ast.Invert)
+    "__invert__": unary_op(ast.Invert),
+    "__setattr__": ast_assign
 }
+
+ast_stmt_nodes = {
+    "__iadd__",
+    "__isub__",
+    "__imul__",
+    "__idiv__",
+    "__ifloordiv__",
+    "__idivmod__",
+    "__ipow__",
+    "__imod__",
+    "__iand__",
+    "__ior__",
+    "__ixor__",
+    "__ilshift__",
+    "__irshift__",
+    "__setattr__"
+}
+
+def copy_chainable(obj, **kwargs):
+    args = kwargs.pop("args", object.__getattribute__(obj, "args"))
+    state = kwargs.pop("state", object.__getattribute__(obj, "state"))
+    operation = kwargs.pop("operation", object.__getattribute__(obj, "operation"))
+    parent = kwargs.pop("parent", object.__getattribute__(obj, "parent"))
+    name = kwargs.pop("name", object.__getattribute__(obj, "name"))
+    prior = kwargs.pop("prior", object.__getattribute__(obj, "prior"))
+    return type(obj)(state, parent, prior, name, operation, args)
+
 
 @decorator
 def chainable(f, *args, **kwargs):
     bound_args = getcallargs(f, *args, **kwargs)
     self = bound_args["self"]
-    results = type(self)(f(**bound_args), self)
+    state = f(**bound_args)
+    prior = object.__getattribute__(self, "prior")
+    all_sym = filter(lambda x: x != "self" and isinstance(bound_args[x], Symbol), bound_args)
+    chainable_args = chain.from_iterable(sym_getattr(bound_args[i], "prior") for i in all_sym)
+    if chainable_args:
+        prior += tuple(chainable_args) # Will be empty if no other
+    name = object.__getattribute__(self, "name")
+    type_self = type(self)
+    results = type_self(state, self, prior)
     object.__setattr__(results, "operation", f.__name__)
     object.__setattr__(results, "args", bound_args)
+    # If the operation was a statement we need to add the result to previous
+    # and start a new chain.
+    if f.__name__ in ast_stmt_nodes:
+        prior += (results,)
+        results = type_self(prior=prior, name=name)
     return results
+
+@decorator
+def pseudochainable(f, *args, **kwargs):
+    """
+    This takes a non-chainable statement on a Symbol and emulates chainable
+    behavior by inserting nodes between this node and its parent, then
+    updating the state of the current node to appear as if it were the result
+    of a chained call.
+    
+    A visual representation may be somewhat clearer.  Letters represent
+    node identity and numbers represent temporal location:
+    
+    Before:  (A 0) -> (B 1)
+    After: (A 0) -> (C 1) -> (D 2) -> (B 3)
+    
+    Node C represents a copy of node B in the before state.  Node D represents
+    the statement operation, which is not chainable.  Node B now represents the
+    start of a new expression, with a prior expression tuple of (*D's priors, D). 
+    """
+    # First lets collect all the required values
+    bound_args = getcallargs(f, *args, **kwargs)
+    self = bound_args["self"]
+    # We need to make a copy of this node and insert it between this node
+    # and its parent.
+    old_self = copy_chainable(self)
+    # We then need to create the statement terminating node
+    terminator = copy_chainable(self, state=f(**bound_args), parent=old_self, operation=f.__name__, args=bound_args)
+    # Finally we need to update the current chainable to indicate that it
+    # is now an empty node (save name and priors).
+    prior = sym_getattr(terminator, "prior") + (terminator,)
+    object.__setattr__(self, "operation", None)
+    object.__setattr__(self, "args", None)
+    object.__setattr__(self, "state", None)
+    object.__setattr__(self, "parent", None)
+    object.__setattr__(self, "prior", prior)
+    # Name should already be set properly, so that is it!
+    # Note that this is a pointless return as this decorator is
+    # only used for statement terminating methods...
+    return self
+
 
 
 class Symbol(object):
@@ -130,26 +247,44 @@ class Symbol(object):
     Base class for Proxy objects.
     """
 
+#    def __str__(self):
+#        pass
+#    
+    def __repr__(self):
+        return ast.dump(object.__getattribute__(self, "ast"))
 
     @property
     def ast(self):
-        parents = object.__getattribute__(self, "parents")
-        if parents is None:
+        parent = object.__getattribute__(self, "parent")
+        if parent is None:
             return ast.Name(object.__getattribute__(self, "name"), ast.Load())
         else:
-            node_func = ast_op_nodes[object.__getattribute__(self, "operation")]
-            args = object.__getattribute__(self, "args")
-            if not callable(node_func): print node_func
-            return node_func(**args)
+            node_func = ast_op_nodes.get(
+                object.__getattribute__(self, "operation"),
+                None
+            )
+            if node_func:
+                args = object.__getattribute__(self, "args")
+                return node_func(**args)
+            else:
+                return ast.Name(object.__getattribute__(self, "name"), ast.Load())
 
-    def __init__(self, state=None, parents=None, name="symbol"):
+    def __init__(self, state=None, parent=None, prior=None, name=None, operation=None, args=None):
+        """By default, children should get attributes from their parents."""
         object.__setattr__(self, "state", state)
-        object.__setattr__(self, "parents", parents)
-        object.__setattr__(self, "name", name)
+        object.__setattr__(self, "parent", parent)
+        object.__setattr__(self, "prior", prior or sym_getattr(parent, "prior", tuple()))
+        object.__setattr__(self, "name", name or sym_getattr(parent, "name", "symbol"))
+        object.__setattr__(self, "operation", operation or sym_getattr(parent, "operation", None))
+        object.__setattr__(self, "args", args or sym_getattr(parent, "args", None))
 
     @chainable
     def __getattribute__(self, item):
         return lambda: object.__getattribute__(self, item)
+
+    @pseudochainable
+    def __setattr__(self, item, value):
+        return lambda: object.__setattr__(self, item, value)
 
     @chainable
     def __invert__(self):
@@ -191,6 +326,7 @@ class Symbol(object):
     def __div__(self, other):
         return lambda: object.__getattribute__(self, "state") / other
 
+    @chainable
     def __truediv__(self, other):
         return lambda: object.__getattribute__(self, "state").__truediv__(other)
 
@@ -358,8 +494,8 @@ class Symbol(object):
         return lambda: object.__getattribute__(self, "state").__imod__(other)
 
     @chainable
-    def __ipow__(self, other, modulo=None):
-        return lambda: object.__getattribute__(self, "state").__ipow__(other, modulo)
+    def __ipow__(self, other):
+        return lambda: object.__getattribute__(self, "state").__ipow__(other)
 
     @chainable
     def __ilshift__(self, other):
@@ -374,6 +510,6 @@ ast_obj_nodes.update({
     int: lambda x: ast.Num(x),
     float: lambda x: ast.Num(x),
     str: lambda x: ast.Str(x),
-    Symbol: lambda x: ast.Name(object.__getattribute__(x, "name"), ast.Load()),
+    Symbol: lambda x: object.__getattribute__(x, "ast"),
     tuple: lambda x: ast.Tuple([ast_obj_nodes(y) for y in x], ast.Load())
 })
